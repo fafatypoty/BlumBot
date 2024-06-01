@@ -1,0 +1,9 @@
+pydantic-settings~=2.2.1
+Pyrogram~=2.0.106
+loguru~=0.7.2
+better-proxy~=1.1.5
+aiocfscrape~=1.0.0
+fake-useragent~=1.5.1
+TgCrypto
+aiohttp~=3.9.5
+pydantic~=2.7.2
