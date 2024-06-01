@@ -42,8 +42,8 @@
 установкой необходимых зависимостей:
 
 ```shell
-~ >>> git clone https://github.com/shamhi/HamsterKombatBot.git 
-~ >>> cd HamsterKombatBot
+~ >>> git clone https://github.com/fafatypoty/BlumBot.git
+~ >>> cd BlumBot
 
 # Linux
 ~/BlumBot >>> python3 -m venv venv
