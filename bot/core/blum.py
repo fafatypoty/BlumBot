@@ -187,7 +187,6 @@ class Blum:
 
     async def get_tasks(self) -> list[Task]:
         response = await self.__request(RequestMethods.GET, self.game_uri + "/tasks")
-        print(response)
         return [Task(**task) for task in response]
 
     async def start_task(self, task_id: str) -> Optional[Task]:
