@@ -50,9 +50,9 @@ class Blum:
         self.refresh_token = ''
 
         self.session = CloudflareScraper(headers={"User-Agent": UserAgent(os="android").random},
-                                         timeout=aiohttp.ClientTimeout(total=30))
+                                         timeout=aiohttp.ClientTimeout(total=120))
 
-        self.logger = logger.bind(session_name=f"{self.session_name: <18} | ")
+        self.logger = logger.bind(session_name=f"{self.session_name: <10} | ")
 
     async def logout(self):
         await self.session.close()
@@ -187,6 +187,7 @@ class Blum:
 
     async def get_tasks(self) -> list[Task]:
         response = await self.__request(RequestMethods.GET, self.game_uri + "/tasks")
+        print(response)
         return [Task(**task) for task in response]
 
     async def start_task(self, task_id: str) -> Optional[Task]:
@@ -312,7 +313,8 @@ class Blum:
                         await self.subscribe(task.socialSubscription.url)
                     await self.claim_task(task.id)
 
-            if balance.game_passes > 0:
+            if balance.game_passes > 0 and settings.PLAY_GAMES:
+                self.logger.info(f"Find Game Passes, start gaming")
                 for _ in range(balance.game_passes):
                     await asyncio.sleep(random.uniform(10, 20))
                     await self.play_game()
@@ -327,9 +329,5 @@ class Blum:
 
 
 async def run_blum(tg_client: Client, proxy: Optional[str] = None):
-    try:
-        runtime = Blum(tg_client, proxy)
-        await runtime.run()
-    except Exception as e:
-        print(e)
-        logger.error(f"{tg_client.name} | Invalid session")
+    runtime = Blum(tg_client, proxy)
+    await runtime.run()

@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     API_HASH: str
 
     IS_DEV_MODE: bool = False
+    PLAY_GAMES: bool = False
 
     REFERRAL_CODES: Optional[list[str]] = None
 

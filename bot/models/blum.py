@@ -48,18 +48,21 @@ class Task(BaseModel):
     status: "Status"
     title: str
     reward: str
-    isOngoing: bool
+    kind: "Kind"
     socialSubscription: Optional["SocialSubscription"] = None
 
     class SocialSubscription(BaseModel):
         openInTelegram: bool
         url: str
 
+    class Kind(str, Enum):
+        ongoing: str = "ONGOING"
+        initial: str = "INITIAL"
+
     class Status(str, Enum):
-        claimed: str = "CLAIMED"
+        finished: str = "FINISHED"
         not_started: str = "NOT_STARTED"
         started: str = "STARTED"
-        done: str = "DONE"
 
     class Type(str, Enum):
         social_subscription: str = "SOCIAL_SUBSCRIPTION"

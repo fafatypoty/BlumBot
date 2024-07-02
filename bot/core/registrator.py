@@ -1,7 +1,7 @@
 from pyrogram import Client
 
 from bot.config import settings
-from bot.utils import logger
+from bot.utils.logger import logger
 
 
 async def register_sessions() -> None:
