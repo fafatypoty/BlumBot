@@ -1,7 +1,7 @@
 import asyncio
-import enum
 import random
 from datetime import timedelta
+from enum import Enum
 from typing import Optional
 from urllib import parse
 
@@ -23,7 +23,7 @@ from bot.models import AuthResponse, BalanceResponse, TelegramWebData, ClaimFarm
 from bot.utils.logger import logger
 
 
-class RequestMethods(enum.StrEnum):
+class RequestMethods(str, Enum):
     POST = "POST"
     GET = "GET"
     PUT = "PUT"
