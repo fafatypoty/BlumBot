@@ -7,3 +7,4 @@ fake-useragent~=1.5.1
 TgCrypto
 aiohttp~=3.9.5
 pydantic~=2.7.2
+random_username=1.0.2
