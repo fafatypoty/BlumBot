@@ -25,7 +25,12 @@ async def get_tg_clients() -> list[Client]:
         api_id=settings.API_ID,
         api_hash=settings.API_HASH,
         workdir='sessions/',
-        plugins=dict(root='bot/plugins')
+        plugins=dict(root='bot/plugins'),
+        proxy=dict(
+            scheme="socks5",
+            hostname="localhost",
+            port=2080
+        ),
     ) for session_name in session_names]
 
     return tg_clients
