@@ -48,7 +48,7 @@ class Task(BaseModel):
     status: "Status"
     title: str
     reward: str
-    kind: "Kind"
+    kind: Optional["Kind"] = None
     socialSubscription: Optional["SocialSubscription"] = None
 
     class SocialSubscription(BaseModel):
