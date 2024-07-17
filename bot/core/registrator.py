@@ -22,11 +22,6 @@ async def register_sessions() -> None:
         api_id=api_id,
         api_hash=api_hash,
         workdir="sessions/",
-        proxy=dict(
-            scheme="socks5",
-            hostname="localhost",
-            port=2080
-        )
     )
 
     async with session:
