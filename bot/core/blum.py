@@ -302,15 +302,19 @@ class Blum:
                     f"Balance: {balance.balance: <8} | Game Passes: {balance.game_passes: <3} | Farming: {'<c>finished</c>' if balance.farming and balance.farming.end < balance.now_timestamp else '<g>started</g>' if balance.farming else '<r>not started</r>'}")
 
             balance = await self.get_balance()
-
             tasks = await self.get_tasks()
-            for task in tasks:
-                if task.status == task.Status.not_started and task.type != task.Type.progress_target:
-                    await self.start_task(task.id)
-                elif task.status == task.Status.started:
-                    if task.socialSubscription and task.socialSubscription.openInTelegram:
-                        await self.subscribe(task.socialSubscription.url)
-                    await self.claim_task(task.id)
+            
+            if tasks and settings.CLAIM_TASKS:
+                for task in tasks:
+                    if task.status == task.Status.not_started and task.type != task.Type.progress_target:
+                        await self.start_task(task.id)
+                    elif task.status == task.Status.started:
+                        if task.socialSubscription and task.socialSubscription.openInTelegram:
+                            # skip the channel join tasks for now
+                            continue
+                            # await self.subscribe(task.socialSubscription.url)
+                            
+                        await self.claim_task(task.id)
 
             if balance.game_passes > 0 and settings.PLAY_GAMES:
                 self.logger.info(f"Find Game Passes, start gaming")

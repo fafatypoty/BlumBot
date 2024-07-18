@@ -48,7 +48,7 @@ class Task(BaseModel):
     status: "Status"
     title: str
     reward: str
-    kind: "Kind"
+    kind: Optional["Kind"] = None
     socialSubscription: Optional["SocialSubscription"] = None
 
     class SocialSubscription(BaseModel):
@@ -63,7 +63,9 @@ class Task(BaseModel):
         finished: str = "FINISHED"
         not_started: str = "NOT_STARTED"
         started: str = "STARTED"
+        ready_for_claim: str = "READY_FOR_CLAIM"
 
     class Type(str, Enum):
         social_subscription: str = "SOCIAL_SUBSCRIPTION"
         progress_target: str = "PROGRESS_TARGET"
+        application_launch: str = "APPLICATION_LAUNCH"

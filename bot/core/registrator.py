@@ -1,3 +1,4 @@
+from bot.utils import proxy
 from pyrogram import Client
 
 from bot.config import settings
@@ -20,7 +21,7 @@ async def register_sessions() -> None:
         name=session_name,
         api_id=api_id,
         api_hash=api_hash,
-        workdir="sessions/"
+        workdir="sessions/",
     )
 
     async with session:
