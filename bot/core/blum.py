@@ -310,7 +310,10 @@ class Blum:
                         await self.start_task(task.id)
                     elif task.status == task.Status.started:
                         if task.socialSubscription and task.socialSubscription.openInTelegram:
-                            await self.subscribe(task.socialSubscription.url)
+                            # skip the channel join tasks for now
+                            continue
+                            # await self.subscribe(task.socialSubscription.url)
+                            
                         await self.claim_task(task.id)
 
             if balance.game_passes > 0 and settings.PLAY_GAMES:
