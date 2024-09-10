@@ -6,6 +6,7 @@ from typing import Optional
 from urllib import parse
 
 import aiohttp
+from bot.exceptions.blum import HtmlContentType
 import pyrogram.types
 from aiohttp import ContentTypeError
 from pyrogram import Client
@@ -17,9 +18,12 @@ from pyrogram.raw.functions.messages import RequestWebView
 
 from bot.config import settings
 from bot.exceptions import ClaimRewardNextDay, NeedToStartFarm, UsernameNotAvailable, ReferralTokenUnavailable, \
-    UserNotFound, AccountNotFound, TaskAlreadyClaimed, TaskNotComplete
+    UserNotFound, AccountNotFound, TaskAlreadyClaimed, TaskNotComplete, CannotGetTasks, CannotStartGame, CannotGetTaskEvents, \
+    HtmlContentType
+    
 from bot.models import AuthResponse, BalanceResponse, TelegramWebData, ClaimFarmingResponse, Farming, StartGameResponse, \
     Task
+    
 from bot.utils.logger import logger
 
 
@@ -35,11 +39,27 @@ def format_duration(seconds):
     minutes, seconds = divmod(remainder, 60)
     return f"{int(hours)} hours {int(minutes)} minutes {int(seconds)} seconds"
 
+def retry_async(max_retries=2, exception=Exception):
+    def decorator(func):
+        async def wrapper(*args, **kwargs):
+            session = args[0].session_name
+            retries = 0
+            while retries < max_retries:
+                try:
+                    return await func(*args, **kwargs)
+                except exception as e:
+                    retries += 1
+                    logger.error(f"Session {session} | Error: {e}. Retrying {retries}/{max_retries}...")
+                    await asyncio.sleep(10)
+                    if retries >= max_retries:
+                        break
+        return wrapper
+    return decorator
 
 class Blum:
     def __init__(self, tg_client: Client, proxy: Optional[str] = None):
         self.game_uri = "https://game-domain.blum.codes/api/v1"
-        self.auth_uri = "https://gateway.blum.codes/v1"
+        self.auth_uri = "https://user-domain.blum.codes/api/v1"
 
         self.telegram_web = "https://telegram.blum.codes"
 
@@ -56,7 +76,7 @@ class Blum:
 
     async def logout(self):
         await self.session.close()
-
+        
     async def login(self, referral_code: str | list[str] = None) -> AuthResponse:
         payload = {"query": await self.get_telegram_web_data()}
 
@@ -136,10 +156,11 @@ class Blum:
                                         json=payload)
         return AuthResponse(**response)
 
+    @retry_async()
     async def claim_daily_reward(self) -> bool:
         try:
             response = await self.__request(RequestMethods.POST, self.game_uri + "/daily-reward",
-                                            params={"offset": -180})
+                                            params={"offset": -420})
             if response["message"] == "OK":
                 self.logger.success(f"Daily reward claimed")
                 return True
@@ -164,6 +185,7 @@ class Blum:
         response = await self.__request(RequestMethods.GET, self.game_uri + "/user/balance")
         return BalanceResponse(**response)
 
+    @retry_async(exception=CannotStartGame)
     async def start_game(self) -> str:
         response = await self.__request(RequestMethods.POST, self.game_uri + "/game/play")
         self.logger.debug(f"Game started")
@@ -184,10 +206,16 @@ class Blum:
         await asyncio.sleep(random.uniform(35, 40))
 
         await self.claim_game(game_id)
-
+        
+    @retry_async(exception=CannotGetTasks)
     async def get_tasks(self) -> list[Task]:
         response = await self.__request(RequestMethods.GET, self.game_uri + "/tasks")
-        return [Task(**task) for task in response]
+        
+        tasks = []
+        for obj in response:
+            tasks += obj["tasks"]
+
+        return [Task(**task) for task in tasks]
 
     async def start_task(self, task_id: str) -> Optional[Task]:
         try:
@@ -198,7 +226,8 @@ class Blum:
         except TaskAlreadyClaimed:
             self.logger.debug(f"Failed to start task {task_id} (already claimed)")
         return None
-
+    
+    @retry_async(exception=CannotGetTaskEvents)
     async def claim_task(self, task_id: str) -> Optional[Task]:
         await asyncio.sleep(random.uniform(10, 20))
         try:
@@ -247,7 +276,8 @@ class Blum:
 
         self.session.headers["Authorization"] = "Bearer " + parsed.access_token
         self.refresh_token = parsed.refresh_token
-
+    
+    @retry_async(exception=HtmlContentType)
     async def __request(self, method: RequestMethods, url: str, **args) -> dict:
         response = await self.session.request(method, url, proxy=self.proxy, **args)
         settings.IS_DEV_MODE and print(await response.text())
@@ -273,10 +303,18 @@ class Blum:
                     raise TaskAlreadyClaimed(error_message)
                 elif error_message == "Task is not done":
                     raise TaskNotComplete(error_message)
+                elif error_message == "can not get task":
+                    raise CannotGetTasks(error_message)
+                elif error_message == "can not get task events":
+                    raise CannotGetTaskEvents(error_message)
+                elif error_message == "cannot start game":
+                    raise CannotStartGame(error_message)
                 raise Exception(error_message)
             return jsoned
         elif 'text/plain' in content_type:
             return {"message": await response.text()}
+        elif "text/html" in content_type:
+            raise HtmlContentType()
         else:
             raise Exception(f"Unexpected content type: {content_type}")
 
@@ -302,15 +340,20 @@ class Blum:
                     f"Balance: {balance.balance: <8} | Game Passes: {balance.game_passes: <3} | Farming: {'<c>finished</c>' if balance.farming and balance.farming.end < balance.now_timestamp else '<g>started</g>' if balance.farming else '<r>not started</r>'}")
 
             balance = await self.get_balance()
+            
+            if settings.CLAIM_TASKS:
+                tasks = await self.get_tasks()
+                
+                for task in tasks:
+                    if task.status == task.Status.not_started \
+                        and task.type != task.Type.progress_target \
+                        and task.type != task.Type.wallet_connection \
+                        and task.type != task.Type.internal \
+                        :
+                            await self.start_task(task.id)
 
-            tasks = await self.get_tasks()
-            for task in tasks:
-                if task.status == task.Status.not_started and task.type != task.Type.progress_target:
-                    await self.start_task(task.id)
-                elif task.status == task.Status.started:
-                    if task.socialSubscription and task.socialSubscription.openInTelegram:
-                        await self.subscribe(task.socialSubscription.url)
-                    await self.claim_task(task.id)
+                    elif task.status == task.Status.ready_for_claim:  
+                        await self.claim_task(task.id)
 
             if balance.game_passes > 0 and settings.PLAY_GAMES:
                 self.logger.info(f"Find Game Passes, start gaming")
@@ -324,7 +367,7 @@ class Blum:
                 sleep_duration = (balance.farming.end - balance.now_timestamp) // 1000 + 1
                 self.logger.info(f"Farm sleep {format_duration(sleep_duration)}")
                 await asyncio.sleep(sleep_duration)
-                await self.refresh_tokens()
+                await self.login()
 
 
 async def run_blum(tg_client: Client, proxy: Optional[str] = None):

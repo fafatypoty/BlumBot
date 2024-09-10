@@ -44,12 +44,19 @@ class StartGameResponse(BaseModel):
 
 class Task(BaseModel):
     id: str
+    kind: Optional["Kind"] = None
     type: "Type"
     status: "Status"
+    subSection: Optional[str] = None
+    iconFileKey: str
+    bannerFileKey: Optional[str] = None
     title: str
+    productName: Optional[str] = None
+    description: Optional[str] = None 
     reward: str
-    kind: "Kind"
     socialSubscription: Optional["SocialSubscription"] = None
+    isHidden: bool
+    isDisclaimerRequired: bool
 
     class SocialSubscription(BaseModel):
         openInTelegram: bool
@@ -63,7 +70,11 @@ class Task(BaseModel):
         finished: str = "FINISHED"
         not_started: str = "NOT_STARTED"
         started: str = "STARTED"
+        ready_for_claim: str = "READY_FOR_CLAIM"
 
     class Type(str, Enum):
         social_subscription: str = "SOCIAL_SUBSCRIPTION"
         progress_target: str = "PROGRESS_TARGET"
+        application_launch: str = "APPLICATION_LAUNCH"
+        wallet_connection: str = "WALLET_CONNECTION"
+        internal: str = "INTERNAL"
